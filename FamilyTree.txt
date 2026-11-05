@@ -1,0 +1,534 @@
+🌳 Bilingual Tree Viewer — English Labels + Arabic Definitions on Focus
+
+💡 Design
+
+Layer Content
+Tree node English label only
+Column "Hierarchical Path" English path
+Tooltip (hover) Arabic label of the hovered node
+Details panel (on select / focus) English name, Arabic name, full path, child count
+Status bar Node type (leaf / branch) + English path
+
+---
+
+📄 Complete Code
+
+```python
+# -*- coding: utf-8 -*-
+"""
+Interactive tree viewer for RC structural elements.
+English labels in the tree; Arabic definitions shown on hover (tooltip)
+and in a details panel on selection (focus).
+Requires: Python 3.8+ (Tkinter built-in)
+"""
+
+import tkinter as tk
+from tkinter import ttk
+
+
+# ============================================================
+# 1) Bilingual tree data:  (en, ar, children)
+# ============================================================
+def N(en, ar, children=None):
+    return {"en": en, "ar": ar, "children": children or []}
+
+
+TREE = N(
+    "Reinforced Concrete Structural Elements in Buildings",
+    "العناصر الإنشائية الخرسانية المسلحة في المباني",
+    [
+        N("1) Substructure — Foundations", "1) عناصر ما تحت الأرض: الأساسات", [
+            N("1.1 Shallow Foundations", "1.1 أساسات سطحية", [
+                N("Isolated Footings", "أساسات منفردة", [
+                    N("Square / Rectangular", "مربعة / مستطيلة"),
+                    N("Circular / Polygonal", "دائرية / مضلعة"),
+                ]),
+                N("Combined Footings", "أساسات مشتركة"),
+                N("Strip Footings", "أساسات شريطية"),
+                N("Mat / Raft Foundation", "حصيرة / لبشة", [
+                    N("Flat", "مسطحة"),
+                    N("Stiffened", "مقواة"),
+                    N("With Beams or Pinnacles", "مع كمرات أو تيجان"),
+                ]),
+            ]),
+            N("1.2 Deep Foundations", "1.2 أساسات عميقة", [
+                N("Piles", "خوازيق", [
+                    N("Displacement Piles", "خوازيق إزاحة"),
+                    N("Bored Piles", "خوازيق حفر"),
+                    N("Injected Piles", "خوازيق حقن"),
+                ]),
+                N("Caissons / Wells", "كيزان / آبار"),
+                N("Deep Retaining Walls", "حوائط ساندة عميقة"),
+            ]),
+            N("1.3 Ties & Distribution Elements", "1.3 عناصر ربط وتوزيع", [
+                N("Ground Beams / Ties", "ميدات أرضية / شدادات"),
+                N("Pile Caps", "قواعد خوازيق"),
+            ]),
+        ]),
+        N("2) Vertical Load-Bearing Elements", "2) العناصر الرأسية الحاملة", [
+            N("2.1 Columns", "2.1 أعمدة", [
+                N("By Reinforcement", "حسب التسليح", [
+                    N("Tied Columns", "أعمدة مربوطة"),
+                    N("Spiral Columns", "أعمدة حلزونية"),
+                ]),
+                N("By Shape", "حسب الشكل", [
+                    N("Square / Rectangular", "مربعة / مستطيلة"),
+                    N("Circular", "دائرية"),
+                    N("L / T / Irregular", "L / T / غير منتظمة"),
+                ]),
+                N("By Slenderness", "حسب النحافة", [
+                    N("Short Columns", "قصيرة"),
+                    N("Slender Columns", "نحيفة"),
+                ]),
+                N("By Function", "حسب الوظيفة", [
+                    N("Load-bearing Columns", "أعمدة حاملة"),
+                    N("Facade Columns", "أعمدة واجهات"),
+                    N("Double / Transfer Columns", "أعمدة مزدوجة / انتقالية"),
+                ]),
+            ]),
+            N("2.2 Concrete Walls", "2.2 حوائط خرسانية", [
+                N("Shear Walls", "حوائط قص"),
+                N("Load-bearing Walls", "حوائط حاملة"),
+                N("Core Walls", "حوائط نواة"),
+                N("Retaining / Basement Walls", "حوائط ساندة / سرداب"),
+            ]),
+        ]),
+        N("3) Horizontal Load-Bearing Elements", "3) العناصر الأفقية الحاملة", [
+            N("3.1 Beams / Girders", "3.1 كمرات / جوائز", [
+                N("Main Beams", "كمرات رئيسية"),
+                N("Secondary Beams", "كمرات ثانوية"),
+                N("Tie / Belt Beams", "كمرات ربط / شد"),
+                N("Edge Beams", "كمرات حافة"),
+                N("Deep Beams", "كمرات عميقة"),
+                N("Transfer Beams", "كمرات تحويلية"),
+                N("Hidden / Embedded Beams", "كمرات مدفونة / مدمجة"),
+            ]),
+            N("3.2 Slabs / Roofs", "3.2 بلاطات / أسقف", [
+                N("Solid Slabs", "بلاطات صلبة", [
+                    N("One-way", "باتجاه واحد"),
+                    N("Two-way", "باتجاهين"),
+                ]),
+                N("Flat Slabs", "بلاطات مسطحة", [
+                    N("Without Drop Panels", "بدون تيجان"),
+                    N("With Drop Panels", "مع تيجان"),
+                ]),
+                N("Ribbed Slabs", "بلاطات هوردي / أعصاب"),
+                N("Waffle Slabs", "بلاطات وافل"),
+                N("Hollow-core Slabs", "بلاطات مجوفة"),
+                N("Slabs on Grade", "بلاطات على الأرضية"),
+            ]),
+        ]),
+        N("4) Circulation & Access Elements", "4) عناصر الحركة والوصول", [
+            N("4.1 Stairs", "4.1 سلالم", [
+                N("Flight / Inclined Slab", "قلبة / بلاطة مائلة"),
+                N("Landing", "بسطة"),
+                N("Stair Beams / Lintels", "كمرات أو عتبات السلالم"),
+            ]),
+            N("4.2 Ramps", "4.2 منحدرات"),
+        ]),
+        N("5) Transition & Connection Elements", "5) عناصر الانتقال والاتصال", [
+            N("Transfer Beams", "كمرات تحويلية"),
+            N("Belts / Ties", "أحزمة / شدادات"),
+            N("Lintels", "عتبات"),
+            N("Structural System Connectors", "عناصر وصل بين الأنظمة الإنشائية"),
+        ]),
+        N("6) Special Elements", "6) عناصر خاصة", [
+            N("Shells / Domes / Curved Roofs", "قشريات / قباب / أسقف مقوسة"),
+            N("Retaining Walls", "حوائط ساندة"),
+            N("Concrete Tanks & Basins", "خزانات وأحواض خرسانية"),
+            N("Precast Concrete Elements", "عناصر خرسانية مسبقة الصب"),
+        ]),
+    ],
+)
+
+
+# ============================================================
+# 2) Tooltip for Treeview (per-row text resolver)
+# ============================================================
+class TreeTooltip:
+    def __init__(self, tree, text_resolver, delay=500):
+        self.tree = tree
+        self.text_resolver = text_resolver
+        self.delay = delay
+        self.tip = None
+        self._after_id = None
+        self._current_row = None
+
+        tree.bind("<Motion>", self._on_motion, add="+")
+        tree.bind("<Leave>", self._on_leave, add="+")
+        # Hide tooltip when scrolling (row under cursor may change silently)
+        tree.bind("<MouseWheel>", lambda e: self._hide(), add="+")
+        tree.bind("<Button-4>", lambda e: self._hide(), add="+")
+        tree.bind("<Button-5>", lambda e: self._hide(), add="+")
+
+    def _on_motion(self, event):
+        row = self.tree.identify_row(event.y)
+        if row == self._current_row:
+            return
+        self._current_row = row
+        self._hide()
+        if not row:
+            return
+        text = self.text_resolver(row)
+        if not text:
+            return
+        x, y = event.x_root, event.y_root
+        self._after_id = self.tree.after(
+            self.delay, lambda: self._show(text, x, y)
+        )
+
+    def _show(self, text, x_root, y_root):
+        self._after_id = None
+        if self.tip or not text:
+            return
+        self.tip = tk.Toplevel(self.tree)
+        self.tip.wm_overrideredirect(True)
+        self.tip.wm_geometry(f"+{x_root + 16}+{y_root + 16}")
+        frame = tk.Frame(self.tip, background="#fffbe0",
+                         borderwidth=1, relief="solid")
+        frame.pack()
+        lbl = tk.Label(
+            frame, text=text, justify="right",
+            background="#fffbe0", font=("Segoe UI", 11),
+            padx=10, pady=5, wraplength=420,
+        )
+        lbl.pack()
+
+    def _hide(self):
+        if self._after_id:
+            self.tree.after_cancel(self._after_id)
+            self._after_id = None
+        if self.tip:
+            self.tip.destroy()
+            self.tip = None
+
+    def _on_leave(self, _event):
+        self._current_row = None
+        self._hide()
+
+
+# ============================================================
+# 3) Application
+# ============================================================
+class StructuralTreeApp:
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        root.title("RC Structural Elements — English labels, Arabic on focus")
+        root.geometry("1120x820")
+        root.minsize(820, 600)
+
+        style = ttk.Style()
+        try:
+            style.configure("Treeview", font=("Segoe UI", 11), rowheight=28)
+            style.configure("Treeview.Heading", font=("Segoe UI", 12, "bold"))
+        except tk.TclError:
+            pass
+
+        # ---------- Toolbar ----------
+        toolbar = ttk.Frame(root, padding=6)
+        toolbar.pack(side="top", fill="x")
+
+        ttk.Button(toolbar, text="Expand All",
+                   command=self.expand_all).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Collapse All",
+                   command=self.collapse_all).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Toggle Selected",
+                   command=self.toggle_selected).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Levels 1–2",
+                   command=self.expand_two_levels).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Levels 1–3",
+                   command=self.expand_three_levels).pack(side="left", padx=2)
+
+        # ---------- Split area: tree above, details below ----------
+        paned = ttk.Panedwindow(root, orient="vertical")
+        paned.pack(side="top", fill="both", expand=True, padx=6, pady=4)
+
+        # --- Tree ---
+        tree_frame = ttk.Frame(paned)
+        paned.add(tree_frame, weight=4)
+
+        self.tree = ttk.Treeview(
+            tree_frame,
+            columns=("path",),
+            show="tree headings",
+            selectmode="browse",
+        )
+        self.tree.heading("#0", text="Element (English)", anchor="w")
+        self.tree.heading("path", text="Hierarchical Path (English)", anchor="w")
+        self.tree.column("#0", width=480, anchor="w", stretch=True)
+        self.tree.column("path", width=560, anchor="w", stretch=True)
+
+        vsb = ttk.Scrollbar(tree_frame, orient="vertical",
+                            command=self.tree.yview)
+        hsb = ttk.Scrollbar(tree_frame, orient="horizontal",
+                            command=self.tree.xview)
+        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+        tree_frame.rowconfigure(0, weight=1)
+        tree_frame.columnconfigure(0, weight=1)
+
+        # --- Details panel ---
+        details_frame = ttk.LabelFrame(
+            paned, text="Definition / التعريف", padding=6
+        )
+        paned.add(details_frame, weight=1)
+
+        self.details = tk.Text(
+            details_frame, height=7, wrap="word",
+            font=("Segoe UI", 11), relief="flat",
+            background="#fafafa", padx=12, pady=8, state="disabled",
+        )
+        self.details.pack(fill="both", expand=True)
+
+        self.details.tag_configure("header",
+                                   font=("Segoe UI", 10, "bold"),
+                                   foreground="#2c3e50")
+        self.details.tag_configure("header_ar",
+                                   font=("Segoe UI", 10, "bold"),
+                                   foreground="#2c3e50", justify="right")
+        self.details.tag_configure("english",
+                                   font=("Segoe UI", 11),
+                                   foreground="#1a5490")
+        self.details.tag_configure("arabic",
+                                   font=("Segoe UI", 13),
+                                   foreground="#8b0000", justify="right")
+        self.details.tag_configure("path",
+                                   font=("Segoe UI", 9),
+                                   foreground="#555555")
+
+        # ---------- Status bar ----------
+        self.status = ttk.Label(root, text="", anchor="w",
+                                relief="sunken", padding=4)
+        self.status.pack(side="bottom", fill="x")
+
+        # ---------- Storage ----------
+        self.en_names = {}   # item_id -> full English path
+        self.ar_names = {}   # item_id -> Arabic label
+
+        # ---------- Build ----------
+        self._build_tree()
+        self.total_nodes = self._count_visible(self.tree.get_children(""))
+
+        # ---------- Events ----------
+        self.tree.bind("<<TreeviewSelect>>", self._on_select)
+        self.tree.bind("<Double-1>", self._on_double_click)
+        self.tree.bind("<space>", lambda e: self.toggle_selected())
+        self.root.bind("<F5>", lambda e: self.expand_all())
+        self.root.bind("<F6>", lambda e: self.collapse_all())
+
+        # Tooltip binding (Arabic resolver)
+        TreeTooltip(self.tree, self._resolve_arabic)
+
+        self._update_status()
+        self._on_select()  # show initial hint
+
+    # ---------- Build tree ----------
+    def _build_tree(self):
+        self._insert_node(parent="", node=TREE,
+                          parent_en="", parent_ar="",
+                          open_root=True)
+
+    def _insert_node(self, parent, node, parent_en, parent_ar,
+                     open_root=False):
+        en, ar = node["en"], node["ar"]
+        en_path = f"{parent_en} > {en}" if parent_en else en
+        ar_path = f"{parent_ar} ← {ar}" if parent_ar else ar
+
+        item = self.tree.insert(
+            parent, "end", text=en, values=(en_path,),
+            open=(open_root and parent == ""),
+        )
+        self.en_names[item] = en_path
+        self.ar_names[item] = ar
+
+        for child in node["children"]:
+            self._insert_node(item, child, en_path, ar_path)
+
+    # ---------- Tooltip resolver ----------
+    def _resolve_arabic(self, item):
+        ar = self.ar_names.get(item)
+        return f"AR — {ar}" if ar else None
+
+    # ---------- Selection / Details ----------
+    def _on_select(self, _event=None):
+        sel = self.tree.selection()
+        if not sel:
+            self._render_details()
+            self._update_status()
+            return
+
+        item = sel[0]
+        en = self.tree.item(item, "text")
+        ar = self.ar_names.get(item, "")
+        en_path = self.en_names.get(item, en)
+        ar_path = self._build_arabic_path(item)
+        children_count = len(self.tree.get_children(item))
+
+        self._render_details(en, ar, en_path, ar_path, children_count)
+        self._update_status()
+
+    def _build_arabic_path(self, item):
+        parts = []
+        current = item
+        while current:
+            ar = self.ar_names.get(current)
+            if ar:
+                parts.append(ar)
+            current = self.tree.parent(current)
+        return " ← ".join(reversed(parts))
+
+    def _render_details(self, en=None, ar="", en_path="",
+                        ar_path="", children_count=0):
+        self.details.configure(state="normal")
+        self.details.delete("1.0", "end")
+
+        if en is None:
+            self.details.insert("end",
+                "Hover any node to see its Arabic label.\n"
+                "Select a node to see its full definition here.\n\n",
+                "header")
+            self.details.insert("end",
+                "مرّر المؤشر فوق أي عقدة لعرض تسميتها العربية.\n"
+                "اختر عقدة لعرض تعريفها الكامل هنا.",
+                "header_ar")
+        else:
+            self.details.insert("end", "English:\n", "header")
+            self.details.insert("end", f"{en}\n\n", "english")
+
+            self.details.insert("end", "العربية:\n", "header_ar")
+            self.details.insert("end", f"{ar}\n\n", "arabic")
+
+            self.details.insert("end",
+                f"Children / الأبناء: {children_count}    "
+                f"|    Path / المسار: {ar_path}\n", "path")
+
+        self.details.configure(state="disabled")
+
+    # ---------- Expand / Collapse ----------
+    def expand_all(self):
+        self._set_all(True)
+
+    def collapse_all(self):
+        self._set_all(False)
+
+    def _set_all(self, state: bool):
+        stack = list(self.tree.get_children(""))
+        while stack:
+            item = stack.pop()
+            children = self.tree.get_children(item)
+            if children:
+                self.tree.item(item, open=state)
+                stack.extend(children)
+
+    def expand_two_levels(self):
+        self._set_all(False)
+        for top in self.tree.get_children(""):
+            self.tree.item(top, open=True)
+
+    def expand_three_levels(self):
+        self._set_all(False)
+        for top in self.tree.get_children(""):
+            self.tree.item(top, open=True)
+            for child in self.tree.get_children(top):
+                if self.tree.get_children(child):
+                    self.tree.item(child, open=True)
+
+    def toggle_selected(self):
+        for item in self.tree.selection():
+            if self.tree.get_children(item):
+                self.tree.item(item, open=not self.tree.item(item, "open"))
+
+    def _on_double_click(self, event):
+        if self.tree.identify_region(event.x, event.y) != "tree":
+            return
+        item = self.tree.identify_row(event.y)
+        if item and self.tree.get_children(item):
+            self.tree.item(item, open=not self.tree.item(item, "open"))
+
+    # ---------- Status ----------
+    def _count_visible(self, items):
+        n, stack = 0, list(items)
+        while stack:
+            it = stack.pop()
+            n += 1
+            stack.extend(self.tree.get_children(it))
+        return n
+
+    def _update_status(self):
+        sel = self.tree.selection()
+        if sel:
+            item = sel[0]
+            n = len(self.tree.get_children(item))
+            kind = "leaf" if n == 0 else f"branch ({n} children)"
+            self.status.config(
+                text=f"{kind}   |   EN: {self.en_names.get(item, '')}"
+            )
+        else:
+            self.status.config(
+                text=f"Total nodes: {self.total_nodes}   |   "
+                     f"Hover = Arabic · Select = full definition · "
+                     f"Double-click = expand/collapse · Space = toggle · "
+                     f"F5 = expand all · F6 = collapse all"
+            )
+
+
+# ============================================================
+# 4) Entry point
+# ============================================================
+if __name__ == "__main__":
+    root = tk.Tk()
+    StructuralTreeApp(root)
+    root.mainloop()
+```
+
+---
+
+🎮 How It Works
+
+Interaction Result
+Tree node label English only (Isolated Footings, Shear Walls, …)
+Hover over any node (0.5 s) Tooltip appears with the Arabic label (AR — أساسات منفردة)
+Click / focus a node Details panel below shows English, العربية, child count, and full Arabic path
+Double-click Expand / collapse that branch
+Space Toggle the selected node
+F5 / F6 Expand all / Collapse all
+Mouse-wheel scroll Tooltip hides automatically
+
+---
+
+🧱 Extending the Tree
+
+Add a child anywhere using the N(en, ar, children) helper:
+
+```python
+N("Isolated Footings", "أساسات منفردة", [
+    N("Square / Rectangular", "مربعة / مستطيلة"),
+    N("Circular / Polygonal",  "دائرية / مضلعة"),
+    N("Sloped",                "مائلة"),          # ← new leaf
+])
+```
+
+· Each node = one dict {"en", "ar", "children"}.
+· Leaves simply have children=[].
+· The tree, tooltip, path, and details panel update automatically — no other code changes needed.
+
+---
+
+⚠️ Notes on Arabic Rendering
+
+1. Windows renders Arabic correctly in Tkinter.
+2. Linux / macOS may show disconnected letters. Fix with:
+   ```bash
+   pip install arabic-reshaper python-bidi
+   ```
+   Then wrap any Arabic string passed to a widget:
+   ```python
+   from bidi.algorithm import get_display
+   import arabic_reshaper
+   def fix(s): return get_display(arabic_reshaper.reshape(s))
+   ```
+   Apply fix() inside _resolve_arabic() and _render_details() before display. Keep the raw string in ar_names for correct copying.
+3. Tkinter has no native RTL: justify="right" on tags approximates right-alignment; tree arrows still appear on the left — that is a platform limitation, not a bug.
